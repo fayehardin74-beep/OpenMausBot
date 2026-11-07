@@ -43,6 +43,12 @@ export interface BindingDeps {
   log?: (line: string) => void;
 }
 
+/** Every bound session id in this process, for drivers that must refuse to replace one (acp/core.ts). */
+const boundSessions = new Set<string>();
+export function isBoundSession(sessionId: string): boolean {
+  return boundSessions.has(sessionId);
+}
+
 export class BindingError extends Error {
   readonly status: number;
   constructor(message: string, status = 400) {
@@ -81,6 +87,11 @@ export function createSessionBindings(deps: BindingDeps) {
   const codexHome = deps.codexHome ?? process.env.CODEX_HOME ?? join(homedir(), ".codex");
   let bindings: Binding[] = load();
   let reconciling = false;
+  const indexBound = () => {
+    boundSessions.clear();
+    for (const binding of bindings) boundSessions.add(binding.cursor);
+  };
+  indexBound();
 
   function load(): Binding[] {
     if (!existsSync(file)) return [];
@@ -94,6 +105,7 @@ export function createSessionBindings(deps: BindingDeps) {
   }
 
   function save() {
+    indexBound();
     mkdirSync(dirname(file), { recursive: true });
     writeFileAtomic(file, JSON.stringify({ version: 1, bindings }, null, 2) + "\n");
   }

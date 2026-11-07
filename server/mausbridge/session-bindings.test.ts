@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { createSessionBindings, type BindingStore } from "./session-bindings.ts";
+import { createSessionBindings, isBoundSession, type BindingStore } from "./session-bindings.ts";
 
 const THREAD = "019a0000-0000-7000-8000-000000000001";
 
@@ -37,6 +37,9 @@ describe("mausbridge session bindings", () => {
     expect(pinned).toMatchObject({ resumeCursor: THREAD, sessionReset: false, recoveryText: undefined, handoff: { resumeCursor: THREAD } });
     expect(() => b.pin("b1", "t1", "chatgpt", {})).toThrow(/不能换到/);
     expect(b.pin("b1", "other", "codex", { sessionReset: true })).toEqual({ sessionReset: true });
+    expect(isBoundSession(THREAD)).toBe(true);
+    b.unbind("b1");
+    expect(isBoundSession(THREAD)).toBe(false);
   });
 
   it("refuses a thread Codex does not have", () => {

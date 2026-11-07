@@ -1,4 +1,5 @@
 import { type ServerText } from "../../../shared/server-text.ts";
+import { isBoundSession } from "../../mausbridge/session-bindings.ts"; // mausbridge import
 // The shared ACP (JSON-RPC 2.0 over stdio) driver; per-CLI quirks live in an AcpSupport.
 // ACP has no turn/completed: the session/prompt result (stopReason + usage) is the completion.
 // session/load replays history as ordinary session/update notifications, so nothing emits before
@@ -1311,6 +1312,8 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
                 init = session.initResult;
                 continue;
               }
+              // mausbridge hook 3/3: a bound session that won't resume fails the turn instead of being replaced.
+              if (cursor && isBoundSession(cursor)) throw new Error(`could not resume session ${cursor}; it may be open in another app`);
               sessionAllows.delete(threadId);
               if (cursor) {
                 const recovery = recoveryPromptFor({
