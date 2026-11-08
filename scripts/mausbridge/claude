@@ -1,0 +1,13 @@
+#!/bin/sh
+# mausbridge: the Claude Code CLI that the Claude desktop app keeps for itself, for OpenMausBot's claude
+# instance. The app stores it as Application Support/Claude/claude-code/<version>/<hash>/claude.app and
+# replaces it on update, so the newest copy is picked at every launch. MAUSBRIDGE_CLAUDE overrides.
+set -e
+if [ -n "$MAUSBRIDGE_CLAUDE" ]; then exec "$MAUSBRIDGE_CLAUDE" "$@"; fi
+root="$HOME/Library/Application Support/Claude/claude-code"
+cli=$(ls -d "$root"/*/*/claude.app/Contents/MacOS/claude 2>/dev/null | sort -V | tail -1)
+if [ -z "$cli" ]; then
+  echo "Claude Code not found under $root; open the Claude desktop app once, or set MAUSBRIDGE_CLAUDE" >&2
+  exit 127
+fi
+exec "$cli" "$@"

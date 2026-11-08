@@ -50,6 +50,7 @@ Codex 和 DeepSeek 同一时间只允许一个程序写同一个会话。发消�
   - 图标由 `scripts/mausbridge/make-launcher.sh` 生成，仓库换了位置要重新运行它。
   - 桌面客户端需要 Electron 本体，第一次使用前要运行一次 `node node_modules/electron/install.js` 下载。
   - 关掉客户端窗口后，服务仍在后台运行，再双击图标会直接打开窗口。
+- MausBot（默认 Bot，负责分派）用 Claude：引擎实例 `claude` 的 `cli` 指向 `scripts/mausbridge/claude`，它每次都取 Claude 桌面 App 自带的最新版 Claude Code。需要先运行一次 `scripts/mausbridge/claude auth login`，登录 Claude 账号。MausBot 设为 `ask`，并关掉 chiefOfStaff 和 memoryUpkeep，以免自动重试、自动整理额外花 token。
 - 使用前，**DeepSeek 桌面端要退出**；Codex 桌面端可以开着，但不能打开正在绑定的线程。
 - 绑定的 Codex Bot 用 `approvalMode: "ask"`。如果用 `full`，续接时会把线程权限放宽到完全访问。
 - 绑定、查看、解绑（只能在本机调用）：
