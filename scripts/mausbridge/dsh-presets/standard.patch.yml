@@ -1,0 +1,3 @@
+# mausbridge: the desktop `standard` preset uses dsh-base's native tool executor, which the acp
+# profile already has, so nothing changes. Kept so every preset name maps to a file.
+[]

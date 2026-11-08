@@ -1,0 +1,12 @@
+# mausbridge: make `dsh --profile acp` present the desktop `ptc` preset's toolset (one model-facing
+# tool, run_code, with every other tool called from inside it). dsh defers every tool a resumed
+# session did not start with, so an acp turn on a desktop ptc session must offer run_code too.
+# Rows mirror what dsh-web-app's presets/ptc.patch.yml changes relative to dsh-base.
+- id: tool-executor-ptc
+  disabled: false
+- id: tool-executor-native
+  disabled: true
+- id: workflow-ptc
+  disabled: true
+- id: tool-workflow
+  disabled: true
