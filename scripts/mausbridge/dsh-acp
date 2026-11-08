@@ -2,13 +2,15 @@
 # mausbridge: `dsh` for OpenMausBot's DeepSeek instances. Same official CLI and acp profile, plus a
 # --patch overlay that matches the agent preset the desktop sessions were made with, because dsh
 # defers every tool a resumed session did not start with and DeepSeek rejects an all-deferred turn.
-# Point an instance's `cli` at this file. MAUSBRIDGE_DSH_PRESET picks the preset (default ptc, the
-# desktop's current choice); a session's preset is the `agent-preset/selected` event in its log.
+# Point an instance's `cli` at this file, or at a `dsh-acp-<preset>` link to it for another preset
+# (MAUSBRIDGE_DSH_PRESET overrides; default ptc). A session's preset is the last
+# `agent-preset/selected` event in its log.
 set -e
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+case $(basename -- "$0") in dsh-acp-*) named=${0##*/dsh-acp-} ;; *) named=ptc ;; esac
 app=${MAUSBRIDGE_DSH_APP:-"$HOME/Desktop/软件管理/DeepSeek Harness.app"}
 dsh="$app/Contents/Resources/runtime/cli/bin/dsh"
-patch=${MAUSBRIDGE_DSH_PATCH:-"$here/dsh-presets/${MAUSBRIDGE_DSH_PRESET:-ptc}.patch.yml"}
+patch=${MAUSBRIDGE_DSH_PATCH:-"$here/dsh-presets/${MAUSBRIDGE_DSH_PRESET:-$named}.patch.yml"}
 # Launcher flags (--profile, --patch) must precede the app's own arguments.
 if [ "$1" = "--profile" ] && [ -n "$2" ]; then
   profile=$2

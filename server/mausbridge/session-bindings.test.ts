@@ -38,7 +38,10 @@ describe("mausbridge session bindings", () => {
     expect(() => b.pin("b1", "t1", "chatgpt", {})).toThrow(/不能换到/);
     expect(b.pin("b1", "other", "codex", { sessionReset: true })).toEqual({ sessionReset: true });
     expect(isBoundSession(THREAD)).toBe(true);
+    expect(b.boundThread("b1")).toBe("t1");
+    expect(b.boundThread("other")).toBeUndefined();
     b.unbind("b1");
+    expect(b.boundThread("b1")).toBeUndefined();
     expect(isBoundSession(THREAD)).toBe(false);
   });
 

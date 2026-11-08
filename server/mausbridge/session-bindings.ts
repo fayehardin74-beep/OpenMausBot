@@ -205,6 +205,12 @@ export function createSessionBindings(deps: BindingDeps) {
       return { ...context, resumeCursor: binding.cursor, sessionReset: false, recoveryText: undefined, handoff };
     },
 
+    /** The thread teammates' work for this bot must go to, so it lands in the bound provider session instead of a new one. */
+    boundThread(botId: string): string | undefined {
+      const own = bindings.filter((b) => b.botId === botId);
+      return (own.find((b) => b.threadId === deps.store.bot(botId)?.threadId) ?? own[0])?.threadId;
+    },
+
     dispose: unsubscribe,
   };
 }

@@ -1312,7 +1312,7 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
                 init = session.initResult;
                 continue;
               }
-              // mausbridge hook 3/3: a bound session that won't resume fails the turn instead of being replaced.
+              // mausbridge hook 3/4: a bound session that won't resume fails the turn instead of being replaced.
               if (cursor && isBoundSession(cursor)) throw new Error(`could not resume session ${cursor}; it may be open in another app`);
               sessionAllows.delete(threadId);
               if (cursor) {

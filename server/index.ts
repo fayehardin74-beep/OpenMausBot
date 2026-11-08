@@ -8444,7 +8444,7 @@ async function beginTurn(
       // Re-decide from the soul actually sent, except on an unattended continuation wake, so a session started under an old soul never survives a soul change by laundering its record.
       const dispatchedConfig = sessionConfig(liveBot?.soul ?? bot.soul);
       if (strictResume && !(opts?.cardContinuation && continuingRoutine) && dispatchedConfig !== plannedConfig) dispatchContext = decideContext(dispatchedConfig);
-      dispatchContext = mausbridge.pin(bot.id, threadId, instanceId, dispatchContext); // mausbridge hook 2/2: a bound conversation always resumes its bound session.
+      dispatchContext = mausbridge.pin(bot.id, threadId, instanceId, dispatchContext); // mausbridge hook 2/4: a bound conversation always resumes its bound session.
       // Before sendTurn: an adapter may emit the whole turn before it resolves.
       handoffs.dispatching(threadId, dispatchClaimId, dispatchContext.handoff);
       const clock = takesTurnClock(userTurnText) ? turnClockLine(Date.now(), hostTimeZone()) + nearLimitNote(limitClock.limit(instanceId), engineName(instanceId), hostTimeZone()) : "";
@@ -9564,7 +9564,7 @@ const webhookIngressStatus = () => ({
   ...(webhookIngressError ? { error: webhookIngressError } : {}),
 });
 ROUTES.push(createWebhookRoutes({ webhooks, ingress: webhookIngressStatus, visible: (auth) => visibleTo(viewerFor(auth)) }), botApi.routes);
-// mausbridge hook 1/2: bind conversations to existing provider sessions (server/mausbridge, docs/mausbridge).
+// mausbridge hook 1/4: bind conversations to existing provider sessions (server/mausbridge, docs/mausbridge).
 const mausbridge = createSessionBindings({ store, dataDir: DATA_DIR, driverKind: (id) => registry.get(id)?.driverKind, busy: threadBusy }); ROUTES.unshift(createMausbridgeRoutes(() => mausbridge));
 
 const RUNTIME_KEEP_MS = 30 * 24 * 60 * 60_000;
@@ -13810,7 +13810,8 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
             // A Chief answers, for the person, the question a teammate it manages waits on in a thread the Chief did not open.
             const forPerson = EXTERNAL || room || fresh || call.answers || mode !== "work" || call.thread === "standing" || !teammatePrompts.actsForPerson(internalSender, internalCapability.threadId) || !canManage(internalSender, recipient) || !threadReadableFrom(internalCapability.threadId)(call.thread) || !asksActingPerson(internalCapability.threadId, store.groupByThread(internalCapability.threadId) ? internalCapability.generation : undefined)(call.thread, recipient.id) ? undefined : await questionRouting.answerForPerson({ sender: internalSender, senderThreadId: address.threadId, target: recipient, threadId: call.thread, message: call.message });
             if (forPerson) { if (forPerson.outcome === "failed") refused.push(forPerson.detail); else answeredForPerson.add(forPerson); receipts.push(forPerson); continue; }
-            const continued = room || fresh ? undefined : workThreadFor(store, { botId: target.botId, botName: recipient.name, fromBotId: internalSender.id, fromThreadId: address.threadId, thread: call.thread, notice: mode === "notify",
+            const boundThread = room ? undefined : mausbridge.boundThread(target.botId); // mausbridge hook 4/4: work for a bound bot goes into its bound session.
+            const continued = boundThread ? store.taskByThread(target.botId, boundThread) ?? undefined : room || fresh ? undefined : workThreadFor(store, { botId: target.botId, botName: recipient.name, fromBotId: internalSender.id, fromThreadId: address.threadId, thread: call.thread, notice: mode === "notify",
               answering: coordinator.answersTo(internalCapability.roomHandoffId ?? generation), also: (task) => !CLOUD_TEAM || threadStarters.get(task.threadId) === opener, reach: (task) => outsideLineage.mayReach(address.threadId, task.threadId) });
             const relayed = EXTERNAL || (!call.answers && (room || fresh || mode === "consult")) ? undefined : await questionRouting.relay({ sender: internalSender, senderThreadId: address.threadId,
               senderNode: coordinator.node(internalCapability.roomHandoffId ?? generation), target: recipient, message: call.message, ...(call.answers ? { answers: call.answers } : {}), ...(continued ? { threadId: continued.threadId } : {}),
