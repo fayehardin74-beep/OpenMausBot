@@ -44,7 +44,7 @@ config.instances[instanceId] = {
   ...previous,
   driver,
   ...(displayName ? { displayName } : {}),
-  config: { ...(previous?.config ?? {}), ...(cli ? { cli } : {}), workspace },
+  config: { ...previous?.config, ...(cli ? { cli } : {}), workspace },
 };
 const backup = `${file}.mausbridge-backup-${new Date().toISOString().replace(/[:.]/g, "-")}`;
 copyFileSync(file, backup);
