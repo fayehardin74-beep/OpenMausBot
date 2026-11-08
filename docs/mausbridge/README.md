@@ -66,7 +66,9 @@ scripts/mausbridge/check.sh
 
 全部通过后，再把 `mausbot-bridge` 快进到这个分支，并重启服务器。
 
-**冲突怎么处理**：只可能出现在上面 4 行附近。保留上游的新代码，再把对应的那一行 hook 放回原来的位置：
+**文件大小上限**：上游的 `scripts/testing/file-size-ratchet.test.ts` 不许几个大文件变长，git push 前会检查。这里把 `server/index.ts` 和 `server/drivers/acp/core.ts` 的上限调到了"上游行数 + hook 行数"。合并后如果这两项冲突或检查报错，就用合并后的实际行数（`wc -l`）更新这两个数字。
+
+**冲突怎么处理**：只可能出现在上面 4 行附近，或者上面那两个上限数字上。保留上游的新代码，再把对应的那一行 hook 放回原来的位置：
 - hook 1：放在 `ROUTES.push(...botApi.routes)` 之后。
 - hook 2：放在 `handoffs.dispatching(...)` 之前。
 - hook 3：放在 ACP 续接循环里 `sessionAllows.delete(threadId)` 之前。
