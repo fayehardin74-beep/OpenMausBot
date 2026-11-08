@@ -46,7 +46,10 @@ Codex 和 DeepSeek 同一时间只允许一个程序写同一个会话。发消�
 
 ## 日常使用
 
-- 启动：`scripts/mausbridge/start-server.sh`（端口 8799），网页端 `pnpm dev`（端口 5199）。
+- 启动：双击桌面上的 **OpenMausBot** 图标。它会自动拉起服务（端口 8799）和网页（端口 5199），已经在运行的就跳过，然后打开桌面客户端。日志在 `~/.openmausbot/mausbridge/logs/`。
+  - 图标由 `scripts/mausbridge/make-launcher.sh` 生成，仓库换了位置要重新运行它。
+  - 桌面客户端需要 Electron 本体，第一次使用前要运行一次 `node node_modules/electron/install.js` 下载。
+  - 关掉客户端窗口后，服务仍在后台运行，再双击图标会直接打开窗口。
 - 使用前，**DeepSeek 桌面端要退出**；Codex 桌面端可以开着，但不能打开正在绑定的线程。
 - 绑定的 Codex Bot 用 `approvalMode: "ask"`。如果用 `full`，续接时会把线程权限放宽到完全访问。
 - 绑定、查看、解绑（只能在本机调用）：
