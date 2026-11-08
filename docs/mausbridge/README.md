@@ -1,6 +1,6 @@
 # mausbridge：把 OpenMausBot 的 Bot 绑定到已有的 Codex / DeepSeek 会话
 
-这是 fork `fayehardin74-beep/OpenMausBot` 上的一层小补丁，基于上游 OpenMausBot 发布版本，不基于 `main`。
+这是 fork `fayehardin74-beep/OpenMausBot` 上的一层小补丁，基于上游 OpenMausBot 发布版本（当前 v0.1.148），不基于 `main`。
 目标：一个 Bot 固定对应一个已有的 Codex 线程或 DeepSeek 会话；Bot 之间派活、完成通知都由程序完成，不新建会话、不改用 API。
 
 ## 改了什么
