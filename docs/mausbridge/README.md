@@ -10,7 +10,7 @@
 | 位置 | 作用 |
 |---|---|
 | `server/index.ts` hook 1/4 | 创建绑定服务，挂上 `/api/mausbridge/bindings` 接口（只接受本机请求） |
-| `server/index.ts` hook 2/4 | 每轮发给引擎之前，把已绑定对话钉在绑定的会话上：不重置、不用"历史回放"新开 |
+| `server/index.ts` hook 2/4 | 每轮发给引擎之前，把已绑定对话钉在绑定的会话上：不重置、不用"历史回放"新开；会话被 Codex/DeepSeek 客户端占着时先等待，释放后自动发出 |
 | `server/drivers/acp/core.ts` hook 3/4 | ACP 引擎（DeepSeek）续接已绑定会话失败时，让这一轮报错，而不是悄悄 `session/new` |
 | `server/index.ts` hook 4/4 | `coordinate_bots` 派给已绑定 Bot 的活，进它绑定的那个对话，而不是新开 "@X · work" 对话 |
 
@@ -29,6 +29,20 @@
     - `dsh-acp-standard` 对应 standard。
     - 要查某个会话用的是哪个预设，看它日志里最后一条 `agent-preset/selected`。
 - **不额外花 token**：派活结果由运行时自动唤醒派活方，不经过额外的模型。绑定的 Bot 关掉了 `memoryUpkeep`（自动记忆整理会另外调用模型），也关掉了 MausBot 的 Chief of Staff（它会自动重试并调用模型）。
+
+## 客户端占着会话时：自动等待
+
+Codex 和 DeepSeek 同一时间只允许一个程序写同一个会话。发消息前，`server/mausbridge/session-holder.ts` 会只读地检查锁文件被谁打开（用 `lsof` 查，从不自己去加锁）：
+
+- Codex：`~/.codex/thread-writer-locks/<线程>.lock`
+- DeepSeek：`~/.dsh/sessions/<工作目录>/<会话>/session.lock`
+
+如果锁在别的程序手里（OpenMausBot 自己启动的引擎不算），这一轮会先等着：
+- 对话里显示"客户端正占用这个会话，这条消息先等着"，之后每 5 秒检查一次。
+- 锁一释放就自动发出，并提示"已释放会话，消息已发出"。
+- 等待期间点"停止"可以取消；最多等 6 小时，超时就报错，不发出。
+
+整个过程不调用模型。
 
 ## 日常使用
 

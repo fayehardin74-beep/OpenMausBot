@@ -8445,7 +8445,7 @@ async function beginTurn(
       // Re-decide from the soul actually sent, except on an unattended continuation wake, so a session started under an old soul never survives a soul change by laundering its record.
       const dispatchedConfig = sessionConfig(liveBot?.soul ?? bot.soul);
       if (strictResume && !(opts?.cardContinuation && continuingRoutine) && dispatchedConfig !== plannedConfig) dispatchContext = decideContext(dispatchedConfig);
-      dispatchContext = mausbridge.pin(bot.id, threadId, instanceId, dispatchContext); // mausbridge hook 2/4: a bound conversation always resumes its bound session.
+      dispatchContext = await mausbridge.pin(bot.id, threadId, instanceId, dispatchContext, () => directTurnClaimIsCurrent(bot.id, dispatchClaimId, threadId) ? undefined : new DirectTurnSetupCancelled("turn stopped while waiting for its session")); // mausbridge hook 2/4: a bound conversation waits for and resumes its bound session.
       // Before sendTurn: an adapter may emit the whole turn before it resolves.
       handoffs.dispatching(threadId, dispatchClaimId, dispatchContext.handoff);
       const clock = takesTurnClock(userTurnText) ? turnClockLine(Date.now(), hostTimeZone()) + nearLimitNote(limitClock.limit(instanceId), engineName(instanceId), hostTimeZone()) : "";

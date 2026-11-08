@@ -1,18 +1,21 @@
 // mausbridge: pin an OpenMausBot conversation to a provider session that already exists outside it
-// (a Codex thread id, an ACP session id). Kept out of upstream files on purpose; index.ts holds two
-// one-line hooks (the route module and `pin` before sendTurn). See docs/mausbridge/README.md.
+// (a Codex thread id, an ACP session id). Kept out of upstream files on purpose: upstream files hold
+// only the one-line `mausbridge hook N/4` calls.
 //
 // Guarantees for a bound conversation:
 //   - every turn resumes the bound session: no sessionReset, no recoveryText, so a provider that
 //     can't resume it fails the turn instead of quietly starting a new native session;
 //   - a cursor the host clears (external update, rewind) is put back; a cursor the host replaces
 //     with another session is recorded as drift and put back too, so the next turn returns home;
-//   - a turn on a different engine than the bound one is refused.
+//   - a turn on a different engine than the bound one is refused;
+//   - while the provider's own desktop app holds the session, the turn waits and then goes out,
+//     instead of failing on the app's single-writer lock.
 import { existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
 import { writeFileAtomic } from "../atomic.ts";
+import { heldElsewhere, holderName, lockFileFor, systemProbe, type HolderProbe } from "./session-holder.ts";
 
 export interface Binding {
   botId: string;
@@ -31,6 +34,7 @@ export interface BindingStore {
   setResumeCursor(botId: string, instanceId: string, cursor: unknown, threadId?: string): void;
   markTaskDispatched(botId: string, threadId: string, instanceId: string): void;
   onChange(listener: (change: { type: string; botId?: string }) => void): () => void;
+  appendMessage(threadId: string, message: { role: "bot"; kind: "activity"; tool: { name: string; ok: boolean } }): unknown;
 }
 
 export interface BindingDeps {
@@ -40,8 +44,15 @@ export interface BindingDeps {
   driverKind(instanceId: string): string | undefined;
   busy(botId: string, threadId: string): boolean;
   codexHome?: string;
+  dshHome?: string;
   log?: (line: string) => void;
+  probe?: HolderProbe;
+  waitStepMs?: number;
+  maxWaitMs?: number;
 }
+
+export const WAIT_STEP_MS = 5_000;
+export const MAX_WAIT_MS = 6 * 60 * 60_000;
 
 /** Every bound session id in this process, for drivers that must refuse to replace one (acp/core.ts). */
 const boundSessions = new Set<string>();
@@ -108,6 +119,31 @@ export function createSessionBindings(deps: BindingDeps) {
     indexBound();
     mkdirSync(dirname(file), { recursive: true });
     writeFileAtomic(file, JSON.stringify({ version: 1, bindings }, null, 2) + "\n");
+  }
+
+  const probe = deps.probe ?? systemProbe;
+  const notice = (threadId: string, text: string) =>
+    deps.store.appendMessage(threadId, { role: "bot", kind: "activity", tool: { name: `notice: ${text}`, ok: true } });
+
+  async function waitForSession(binding: Binding, stopped: () => Error | undefined) {
+    const kind = deps.driverKind(binding.instanceId);
+    const app = holderName(kind);
+    const held = async () => {
+      const lock = lockFileFor(kind, binding.cursor, { codex: codexHome, dsh: deps.dshHome });
+      return lock !== null && await heldElsewhere(lock, probe);
+    };
+    if (!app || !await held()) return;
+    const step = deps.waitStepMs ?? WAIT_STEP_MS;
+    const deadline = Date.now() + (deps.maxWaitMs ?? MAX_WAIT_MS);
+    notice(binding.threadId, `${app} 客户端正占用这个会话，这条消息先等着：退出客户端后会自动发出`);
+    log(`bot ${binding.botId} thread ${binding.threadId}: waiting for the ${app} app to release ${binding.cursor}`);
+    do {
+      await new Promise((resolve) => setTimeout(resolve, step));
+      const error = stopped();
+      if (error) throw error;
+      if (Date.now() > deadline) throw new BindingError(`${app} 客户端一直占用这个会话，等待超时，这条消息没有发出`, 409);
+    } while (await held());
+    notice(binding.threadId, `${app} 客户端已释放会话，消息已发出`);
   }
 
   const find = (botId: string, threadId: string) => bindings.find((b) => b.botId === botId && b.threadId === threadId);
@@ -190,15 +226,17 @@ export function createSessionBindings(deps: BindingDeps) {
       return true;
     },
 
-    /** Called on the dispatch context right before sendTurn. Unbound conversations pass through untouched. */
-    pin<T extends { resumeCursor?: unknown; sessionReset?: boolean; recoveryText?: string; handoff?: unknown }>(
-      botId: string, threadId: string, instanceId: string, context: T,
-    ): T {
+    /** Called on the dispatch context right before sendTurn. Unbound conversations pass through untouched.
+     * `stopped` returns the error to throw when the turn is stopped while it waits for the session. */
+    async pin<T extends { resumeCursor?: unknown; sessionReset?: boolean; recoveryText?: string; handoff?: unknown }>(
+      botId: string, threadId: string, instanceId: string, context: T, stopped: () => Error | undefined = () => undefined,
+    ): Promise<T> {
       const binding = find(botId, threadId);
       if (!binding) return context;
       if (binding.instanceId !== instanceId) {
         throw new BindingError(`这个对话绑定在引擎 ${binding.instanceId} 的已有会话上，不能换到 ${instanceId}；要换请先解除绑定`, 409);
       }
+      await waitForSession(binding, stopped);
       const handoff = context.handoff && typeof context.handoff === "object"
         ? { ...(context.handoff as Record<string, unknown>), resumeCursor: binding.cursor }
         : context.handoff;

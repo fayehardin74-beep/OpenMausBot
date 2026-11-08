@@ -28,6 +28,7 @@ describe("mausbridge ACP guard (fake CLI)", () => {
       setResumeCursor: (_b, instanceId, cursor) => { task.resumeCursors[instanceId] = cursor; },
       markTaskDispatched: () => {},
       onChange: () => () => {},
+      appendMessage: () => {},
     };
     const bindings = createSessionBindings({ store, dataDir: mkdtempSync(join(tmpdir(), "mausbridge-acp-")), driverKind: () => "grokAgent", busy: () => false, log: () => {} });
     bindings.bind({ botId: "b1", cursor: BOUND });
