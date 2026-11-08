@@ -11,6 +11,7 @@ import { copyFileSync, existsSync, readFileSync, renameSync, writeFileSync } fro
 import { execFileSync } from "node:child_process";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const [instanceId, driver, workspaceArg, displayName, cliArg] = process.argv.slice(2);
 if (!instanceId || !driver || !workspaceArg || !/^[\w.-]+$/.test(instanceId)) {
@@ -31,7 +32,8 @@ if (!existsSync(workspace)) {
   process.exit(66);
 }
 const defaultCli = {
-  deepseekAgent: join(homedir(), "Desktop/软件管理/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh"),
+  // dsh plus the desktop's agent presets, so desktop-made sessions keep their toolset.
+  deepseekAgent: fileURLToPath(new URL("./dsh-acp", import.meta.url)),
 };
 const cli = cliArg ?? process.env.MAUSBRIDGE_CLI ?? defaultCli[driver];
 

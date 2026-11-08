@@ -1,0 +1,19 @@
+#!/bin/sh
+# mausbridge: `dsh` for OpenMausBot's DeepSeek instances. Same official CLI and ACP profile, plus
+# the desktop's agent presets (see make-dsh-presets-patch.cjs), so desktop-made sessions resume
+# with the toolset they were recorded with. Point an instance's `cli` at this file.
+# The overlay is rebuilt whenever the DeepSeek app is newer than it.
+set -e
+here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+app=${MAUSBRIDGE_DSH_APP:-"$HOME/Desktop/软件管理/DeepSeek Harness.app"}
+patch=${MAUSBRIDGE_DSH_PATCH:-"${OMB_DATA_DIR:-$HOME/.openmausbot}/mausbridge/dsh-presets.patch.yml"}
+if [ ! -f "$patch" ] || [ "$app/Contents/Resources/app.asar" -nt "$patch" ]; then
+  ELECTRON_RUN_AS_NODE=1 "$app/Contents/MacOS/DeepSeek Harness" "$here/make-dsh-presets-patch.cjs" "$app" "$patch" >&2
+fi
+# Launcher flags (--profile, --patch) must precede the app's own arguments.
+if [ "$1" = "--profile" ] && [ -n "$2" ]; then
+  profile=$2
+  shift 2
+  exec "$app/Contents/Resources/runtime/cli/bin/dsh" --profile "$profile" --patch "$patch" "$@"
+fi
+exec "$app/Contents/Resources/runtime/cli/bin/dsh" "$@"
